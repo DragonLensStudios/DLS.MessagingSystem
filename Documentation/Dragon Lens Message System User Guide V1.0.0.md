@@ -1,4 +1,3 @@
-
 # Message System User Guide
 
 ## Introduction
