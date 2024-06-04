@@ -1,10 +1,26 @@
 using DLS.MessageSystem.Messaging;
+using DLS.MessageSystem.Messaging.MessageChannels;
+using DLS.MessageSystem.Messaging.MessageChannels.Enums;
+using DLS.MessageSystem.Messaging.MessageChannels.Interfaces;
 using DLS.MessageSystem.Tests.Models;
 
 namespace DLS.MessageSystem.Tests.Messaging
 {
+    
     public class MessagingTests
     {
+        protected const string AwesomeTime = "AwesomeTime";
+        protected const string TacoString = "Taco";
+        
+        // Create message channels for the different message types we want to send and receive in the test cases 
+        // (e.g. Gameplay, System, UI, etc.)
+        // We will use these channels to send messages to specific handlers
+        protected IMessageChannel gamePlayChannel = new DefaultMessageChannel(MessageChannels.Gameplay);
+        protected IMessageChannel systemChannel = new DefaultMessageChannel(MessageChannels.System);
+        protected IMessageChannel uiChannel = new DefaultMessageChannel(MessageChannels.UI);
+        protected IMessageChannel awesomeCustomChannel = new CustomChannel(AwesomeTime);
+        protected IMessageChannel tacoCustomChannel = new CustomChannel(TacoString);
+        
         private TestClass testObject;
 
         [OneTimeSetUp]
@@ -13,10 +29,42 @@ namespace DLS.MessageSystem.Tests.Messaging
             testObject = new TestClass();
 
             // Register message handlers
-            MessageSystem.MessageManager.RegisterForChannel<GameplayMessage>(MessageChannels.Gameplay, GameplayMessageHandler);
-            MessageSystem.MessageManager.RegisterForChannel<SystemMessage>(MessageChannels.System, SystemMessageHandler);
-            MessageSystem.MessageManager.RegisterForChannel<GameplayMessage>(MessageChannels.System, Handler);
-            MessageSystem.MessageManager.RegisterForChannel<StringMessage>(StringMessageHandler, 0, MessageChannels.Gameplay, MessageChannels.System, MessageChannels.UI);
+            MessageSystem.MessageManager.RegisterForChannel<GameplayMessage>(gamePlayChannel, GameplayMessageHandler);
+            MessageSystem.MessageManager.RegisterForChannel<SystemMessage>(systemChannel, SystemMessageHandler);;
+            MessageSystem.MessageManager.RegisterForChannel<GameplayMessage>(systemChannel, GamePlayMessageHandler2);
+            MessageSystem.MessageManager.RegisterForChannel<GameplayMessage>(tacoCustomChannel, TacoCustomChannel);
+            
+            MessageSystem.MessageManager.RegisterForChannel<SystemMessage>(AwesomeCustomChannelHandler, 0, awesomeCustomChannel, gamePlayChannel);
+            MessageSystem.MessageManager.RegisterForChannel<StringMessage>(StringMessageHandler, 0, gamePlayChannel, systemChannel, uiChannel);
+        }
+        
+        [OneTimeTearDown]
+        public void OneTimeTearDown()
+        {
+            
+            // Unregister message handlers
+            MessageSystem.MessageManager.UnregisterForChannel<GameplayMessage>(gamePlayChannel, GameplayMessageHandler);
+            MessageSystem.MessageManager.UnregisterForChannel<SystemMessage>(systemChannel, SystemMessageHandler);;
+            MessageSystem.MessageManager.UnregisterForChannel<GameplayMessage>(systemChannel, GamePlayMessageHandler2);
+            MessageSystem.MessageManager.UnregisterForChannel<GameplayMessage>(tacoCustomChannel, TacoCustomChannel);
+
+            MessageSystem.MessageManager.UnregisterForChannel<SystemMessage>(AwesomeCustomChannelHandler, awesomeCustomChannel, gamePlayChannel);
+            MessageSystem.MessageManager.UnregisterForChannel<StringMessage>(StringMessageHandler, gamePlayChannel, systemChannel, uiChannel);
+        }
+
+        private void TacoCustomChannel(MessageSystem.IMessageEnvelope message)
+        {
+            if (!message.Message<GameplayMessage>().HasValue) return;
+            var data = message.Message<GameplayMessage>().Value;
+            testObject.StringProp = data.Message;
+        }
+
+        private void AwesomeCustomChannelHandler(MessageSystem.IMessageEnvelope message)
+        {
+            if (!message.Message<SystemMessage>().HasValue) return;
+            var data = message.Message<SystemMessage>().Value;
+            testObject.intField = data.TestObject.intField;
+            testObject.stringField = data.TestObject.stringField;
         }
 
         private void StringMessageHandler(MessageSystem.IMessageEnvelope message)
@@ -26,7 +74,7 @@ namespace DLS.MessageSystem.Tests.Messaging
             testObject.StringProp = data.Message;
         }
 
-        private void Handler(MessageSystem.IMessageEnvelope message)
+        private void GamePlayMessageHandler2(MessageSystem.IMessageEnvelope message)
         {
             if(!message.Message<GameplayMessage>().HasValue) return;
             var data = message.Message<GameplayMessage>().Value;
@@ -54,7 +102,7 @@ namespace DLS.MessageSystem.Tests.Messaging
         public void Message_Send_String_To_Gameplay_Immediate()
         {
             var text = "Test Taco";
-            MessageSystem.MessageManager.SendImmediate(MessageChannels.Gameplay, new GameplayMessage(text));
+            MessageSystem.MessageManager.SendImmediate(gamePlayChannel, new GameplayMessage(text));
             Assert.AreEqual(testObject.stringField, text);
         }
         
@@ -64,7 +112,7 @@ namespace DLS.MessageSystem.Tests.Messaging
         public void Message_Send_String_To_Multiple_Immediate()
         {
             var text = "Super Taco";
-            MessageSystem.MessageManager.SendImmediate(new StringMessage(text), MessageChannels.Gameplay, MessageChannels.System, MessageChannels.UI);
+            MessageSystem.MessageManager.SendImmediate(new StringMessage(text), gamePlayChannel, systemChannel, uiChannel);
             Assert.AreEqual(testObject.StringProp, text);
         }
 
@@ -75,7 +123,7 @@ namespace DLS.MessageSystem.Tests.Messaging
         {
             testObject.stringField = "Tomato";
             testObject.intField = 1337;
-            MessageSystem.MessageManager.SendImmediate(MessageChannels.System, new SystemMessage(testObject));
+            MessageSystem.MessageManager.SendImmediate(systemChannel, new SystemMessage(testObject));
             Assert.AreEqual("Tomato", testObject.stringField);
             Assert.AreEqual(1337, testObject.intField);
         }
@@ -85,7 +133,7 @@ namespace DLS.MessageSystem.Tests.Messaging
         [Order(4)]
         public void Message_Send_Gameplay_To_System_Immediate()
         {
-            MessageSystem.MessageManager.SendImmediate(MessageChannels.System, new GameplayMessage("Ninjas"));
+            MessageSystem.MessageManager.SendImmediate(systemChannel, new GameplayMessage("Ninjas"));
             Assert.AreEqual("Ninjas", testObject.StringProp);
         }
 
@@ -95,7 +143,7 @@ namespace DLS.MessageSystem.Tests.Messaging
         public void Message_Broadcast_All_Channels_Immediate()
         {
             // Act
-            MessageSystem.MessageManager.RegisterForChannel<StringMessage>(StringMessageHandler, 0, MessageChannels.Gameplay, MessageChannels.System, MessageChannels.UI);
+            MessageSystem.MessageManager.RegisterForChannel<StringMessage>(StringMessageHandler, 0, gamePlayChannel, systemChannel, uiChannel);
 
             MessageSystem.MessageManager.BroadcastImmediate(new StringMessage("Broadcast Message Immediate"));
 
@@ -109,7 +157,7 @@ namespace DLS.MessageSystem.Tests.Messaging
         public void Message_Send_String_To_Gameplay_Queued()
         {
             var text = "Test Message";
-            MessageSystem.MessageManager.Send(MessageChannels.Gameplay, new GameplayMessage(text));
+            MessageSystem.MessageManager.Send(gamePlayChannel, new GameplayMessage(text));
             MessageSystem.MessageManager.ProcessMessages();
             Assert.AreEqual(testObject.stringField, text);
         }
@@ -120,7 +168,7 @@ namespace DLS.MessageSystem.Tests.Messaging
         public void Message_Send_String_To_Multiple_Queued()
         {
             var text = "Multiple Test Message";
-            MessageSystem.MessageManager.Send(new StringMessage(text), MessageChannels.Gameplay, MessageChannels.System, MessageChannels.UI);
+            MessageSystem.MessageManager.Send(new StringMessage(text), gamePlayChannel, systemChannel, uiChannel);
             MessageSystem.MessageManager.ProcessMessages();
             Assert.AreEqual(testObject.StringProp, text);
         }
@@ -132,7 +180,7 @@ namespace DLS.MessageSystem.Tests.Messaging
         {
             testObject.stringField = "Tacos";
             testObject.intField = 420;
-            MessageSystem.MessageManager.Send(MessageChannels.System, new SystemMessage(testObject));
+            MessageSystem.MessageManager.Send(systemChannel, new SystemMessage(testObject));
             MessageSystem.MessageManager.ProcessMessages();
             Assert.AreEqual("Tacos", testObject.stringField);
             Assert.AreEqual(420, testObject.intField);
@@ -143,7 +191,7 @@ namespace DLS.MessageSystem.Tests.Messaging
         [Order(9)]
         public void Message_Send_Gameplay_To_System_Queued()
         {
-            MessageSystem.MessageManager.Send(MessageChannels.System, new GameplayMessage("Tacos"));
+            MessageSystem.MessageManager.Send(systemChannel, new GameplayMessage("Tacos"));
             MessageSystem.MessageManager.ProcessMessages();
             Assert.AreEqual("Tacos", testObject.StringProp);
         }
@@ -190,9 +238,9 @@ namespace DLS.MessageSystem.Tests.Messaging
             });
 
             // Act
-            MessageSystem.MessageManager.RegisterForChannel<StringMessage>(MessageChannels.System, lowPriorityHandler, 0);
-            MessageSystem.MessageManager.RegisterForChannel<StringMessage>(MessageChannels.System, highPriorityHandler, 1);
-            MessageSystem.MessageManager.Send(MessageChannels.System, new StringMessage("Test"));
+            MessageSystem.MessageManager.RegisterForChannel<StringMessage>(systemChannel, lowPriorityHandler, 0);
+            MessageSystem.MessageManager.RegisterForChannel<StringMessage>(systemChannel, highPriorityHandler, 1);
+            MessageSystem.MessageManager.Send(systemChannel, new StringMessage("Test"));
             MessageSystem.MessageManager.ProcessMessages();
 
             // Assert
@@ -212,12 +260,12 @@ namespace DLS.MessageSystem.Tests.Messaging
             });
 
             // Act
-            MessageSystem.MessageManager.RegisterForChannel<StringMessage>(MessageChannels.System, handler);
-            MessageSystem.MessageManager.SendImmediate(MessageChannels.System, new StringMessage("First Message"));
+            MessageSystem.MessageManager.RegisterForChannel<StringMessage>(systemChannel, handler);
+            MessageSystem.MessageManager.SendImmediate(systemChannel, new StringMessage("First Message"));
             Assert.AreEqual("First Message", testObject.StringProp);
 
-            MessageSystem.MessageManager.UnregisterForChannel<StringMessage>(MessageChannels.System, handler);
-            MessageSystem.MessageManager.SendImmediate(MessageChannels.System, new StringMessage("Second Message"));
+            MessageSystem.MessageManager.UnregisterForChannel<StringMessage>(systemChannel, handler);
+            MessageSystem.MessageManager.SendImmediate(systemChannel, new StringMessage("Second Message"));
 
             // Assert
             Assert.AreNotEqual("Second Message", testObject.StringProp);
@@ -229,7 +277,7 @@ namespace DLS.MessageSystem.Tests.Messaging
         public void Message_Broadcast_All_Channels_Queue()
         {
             // Act
-            MessageSystem.MessageManager.RegisterForChannel<StringMessage>(StringMessageHandler, 0, MessageChannels.Gameplay, MessageChannels.System, MessageChannels.UI);
+            MessageSystem.MessageManager.RegisterForChannel<StringMessage>(StringMessageHandler, 0, gamePlayChannel, systemChannel, uiChannel);
 
             MessageSystem.MessageManager.Broadcast(new StringMessage("Broadcast Message"));
 
@@ -246,7 +294,7 @@ namespace DLS.MessageSystem.Tests.Messaging
         public void Message_Send_Non_Existing_Channel()
         {
             // Arrange
-            var nonExistingChannel = (MessageChannels)999;  // Assuming 999 is not a defined channel
+            IMessageChannel nonExistingChannel = new CustomChannel("");
 
             // Act & Assert
             Assert.Throws<InvalidOperationException>(() => MessageSystem.MessageManager.SendImmediate(nonExistingChannel, new StringMessage("Test")));
@@ -290,7 +338,7 @@ namespace DLS.MessageSystem.Tests.Messaging
         public async Task Message_Send_String_To_Gameplay_Immediate_Async()
         {
             var text = "Test Async";
-            await MessageSystem.MessageManager.SendImmediateAsync(MessageChannels.Gameplay, new GameplayMessage(text));
+            await MessageSystem.MessageManager.SendImmediateAsync(gamePlayChannel, new GameplayMessage(text));
             Assert.AreEqual(testObject.stringField, text);
         }
         
@@ -300,7 +348,7 @@ namespace DLS.MessageSystem.Tests.Messaging
         public async Task Message_Send_String_To_Multiple_Immediate_Async()
         {
             var text = "Test Multiple Async";
-            await MessageSystem.MessageManager.SendImmediateAsync(new GameplayMessage(text), MessageChannels.Gameplay, MessageChannels.System, MessageChannels.UI);
+            await MessageSystem.MessageManager.SendImmediateAsync(new GameplayMessage(text), gamePlayChannel, systemChannel, uiChannel);
             Assert.AreEqual(testObject.StringProp, text);
         }
 
@@ -310,7 +358,7 @@ namespace DLS.MessageSystem.Tests.Messaging
         public async Task Message_Send_String_To_Multiple_Queued_Async()
         {
             var text = "Test Queued Multiple Async";
-            await MessageSystem.MessageManager.SendAsync(new GameplayMessage(text), MessageChannels.Gameplay, MessageChannels.System, MessageChannels.UI);
+            await MessageSystem.MessageManager.SendAsync(new GameplayMessage(text), gamePlayChannel, systemChannel, uiChannel);
             await MessageSystem.MessageManager.ProcessMessagesAsync();
             Assert.AreEqual(testObject.StringProp, text);
         }
@@ -322,7 +370,7 @@ namespace DLS.MessageSystem.Tests.Messaging
         {
             testObject.stringField = "Potato";
             testObject.intField = 9999;
-            await MessageSystem.MessageManager.SendImmediateAsync(MessageChannels.System, new SystemMessage(testObject));
+            await MessageSystem.MessageManager.SendImmediateAsync(systemChannel, new SystemMessage(testObject));
             Assert.AreEqual("Potato", testObject.stringField);
             Assert.AreEqual(9999, testObject.intField);
         }
@@ -332,7 +380,7 @@ namespace DLS.MessageSystem.Tests.Messaging
         [Order(21)]
         public async Task Message_Send_Gameplay_To_System_Immediate_Async()
         {
-            await MessageSystem.MessageManager.SendImmediateAsync(MessageChannels.System, new GameplayMessage("Pirates"));
+            await MessageSystem.MessageManager.SendImmediateAsync(systemChannel, new GameplayMessage("Pirates"));
             Assert.AreEqual("Pirates", testObject.StringProp);
         }
 
@@ -349,7 +397,7 @@ namespace DLS.MessageSystem.Tests.Messaging
             });
 
             // Act
-            MessageSystem.MessageManager.RegisterForChannel<StringMessage>(StringMessageHandler, 0, MessageChannels.Gameplay, MessageChannels.System, MessageChannels.UI);
+            MessageSystem.MessageManager.RegisterForChannel<StringMessage>(StringMessageHandler, 0, gamePlayChannel, systemChannel, uiChannel);
 
             await MessageSystem.MessageManager.BroadcastImmediateAsync(new StringMessage("Broadcast Message Immediate Async"));
 
@@ -363,7 +411,7 @@ namespace DLS.MessageSystem.Tests.Messaging
         public async Task Message_Send_String_To_Gameplay_Queued_Async()
         {
             var text = "Test Message Async";
-            await MessageSystem.MessageManager.SendAsync(MessageChannels.Gameplay, new GameplayMessage(text));
+            await MessageSystem.MessageManager.SendAsync(gamePlayChannel, new GameplayMessage(text));
             await MessageSystem.MessageManager.ProcessMessagesAsync();
             Assert.AreEqual(testObject.stringField, text);
         }
@@ -375,7 +423,7 @@ namespace DLS.MessageSystem.Tests.Messaging
         {
             testObject.stringField = "Burrito";
             testObject.intField = 1234;
-            await MessageSystem.MessageManager.SendAsync(MessageChannels.System, new SystemMessage(testObject));
+            await MessageSystem.MessageManager.SendAsync(systemChannel, new SystemMessage(testObject));
             await MessageSystem.MessageManager.ProcessMessagesAsync();
             Assert.AreEqual("Burrito", testObject.stringField);
             Assert.AreEqual(1234, testObject.intField);
@@ -386,7 +434,7 @@ namespace DLS.MessageSystem.Tests.Messaging
         [Order(25)]
         public async Task Message_Send_Gameplay_To_System_Queued_Async()
         {
-            await MessageSystem.MessageManager.SendAsync(MessageChannels.System, new GameplayMessage("Burritos"));
+            await MessageSystem.MessageManager.SendAsync(systemChannel, new GameplayMessage("Burritos"));
             await MessageSystem.MessageManager.ProcessMessagesAsync();
             Assert.AreEqual("Burritos", testObject.StringProp);
         }
@@ -415,14 +463,6 @@ namespace DLS.MessageSystem.Tests.Messaging
         }
 
 
-        [OneTimeTearDown]
-        public void OneTimeTearDown()
-        {
-            // Unregister message handlers
-            MessageSystem.MessageManager.UnregisterForChannel<GameplayMessage>(MessageChannels.Gameplay, GameplayMessageHandler);
-            MessageSystem.MessageManager.UnregisterForChannel<SystemMessage>(MessageChannels.System, SystemMessageHandler);
-            MessageSystem.MessageManager.UnregisterForChannel<GameplayMessage>(MessageChannels.System, Handler);
-            MessageSystem.MessageManager.UnregisterForChannel<GameplayMessage>(StringMessageHandler, MessageChannels.System, MessageChannels.Gameplay, MessageChannels.UI );
-        }
+
     }
 }

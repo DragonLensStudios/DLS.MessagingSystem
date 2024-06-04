@@ -1,5 +1,3 @@
-using System;
-
 namespace DLS.MessageSystem.Tests.Messaging;
 
 [Serializable]
