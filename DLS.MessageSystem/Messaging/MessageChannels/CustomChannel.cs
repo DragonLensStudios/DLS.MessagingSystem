@@ -1,3 +1,4 @@
+using System;
 using DLS.MessageSystem.Messaging.MessageChannels.Interfaces;
 
 namespace DLS.MessageSystem.Messaging.MessageChannels
@@ -13,11 +14,15 @@ namespace DLS.MessageSystem.Messaging.MessageChannels
     public class CustomChannel : IMessageChannel
     {
         // The name of the custom message channel.
-        public string Name { get; }
+        public string Name { get; private set; }
 
         // Creates a new custom message channel with the specified name.
         public CustomChannel(string name)
         {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                throw new ArgumentException("Channel name cannot be null or whitespace.", nameof(name));
+            }
             Name = name;
         }
     }

@@ -125,6 +125,9 @@ namespace DLS.MessageSystem.Tests.Messaging
             var text = "Test Taco";
             MessageSystem.MessageManager.SendImmediate(gamePlayChannel, new GameplayMessage(text));
             Assert.AreEqual(testObject.stringField, text);
+            var text2 = "Test My Taco";
+            MessageSystem.MessageManager.SendImmediate(MessageChannels.Gameplay, new GameplayMessage(text2));
+            Assert.AreEqual(testObject.stringField, text2);
         }
         
         [Test]
@@ -135,6 +138,9 @@ namespace DLS.MessageSystem.Tests.Messaging
             var text = "Super Taco";
             MessageSystem.MessageManager.SendImmediate(new StringMessage(text), gamePlayChannel, systemChannel, uiChannel);
             Assert.AreEqual(testObject.StringProp, text);
+            var text2 = "Super Duper Taco";
+            MessageSystem.MessageManager.SendImmediate(new StringMessage(text2), MessageChannels.Gameplay, MessageChannels.System, MessageChannels.UI);
+            Assert.AreEqual(testObject.StringProp, text2);
         }
 
         [Test]
@@ -147,6 +153,12 @@ namespace DLS.MessageSystem.Tests.Messaging
             MessageSystem.MessageManager.SendImmediate(systemChannel, new SystemMessage(testObject));
             Assert.AreEqual("Tomato", testObject.stringField);
             Assert.AreEqual(1337, testObject.intField);
+            
+            testObject.stringField = "Potato";
+            testObject.intField = 9999;
+            MessageSystem.MessageManager.SendImmediate(MessageChannels.System, new SystemMessage(testObject));
+            Assert.AreEqual("Potato", testObject.stringField);
+            Assert.AreEqual(9999, testObject.intField);
         }
 
         [Test]
@@ -156,6 +168,8 @@ namespace DLS.MessageSystem.Tests.Messaging
         {
             MessageSystem.MessageManager.SendImmediate(systemChannel, new GameplayMessage("Ninjas"));
             Assert.AreEqual("Ninjas", testObject.StringProp);
+            MessageSystem.MessageManager.SendImmediate(MessageChannels.System, new GameplayMessage("Pirates"));
+            Assert.AreEqual("Pirates", testObject.StringProp);
         }
 
         [Test]
@@ -181,6 +195,10 @@ namespace DLS.MessageSystem.Tests.Messaging
             MessageSystem.MessageManager.Send(gamePlayChannel, new GameplayMessage(text));
             MessageSystem.MessageManager.ProcessMessages();
             Assert.AreEqual(testObject.stringField, text);
+            var text2 = "Test My Message";
+            MessageSystem.MessageManager.Send(MessageChannels.Gameplay, new GameplayMessage(text2));
+            MessageSystem.MessageManager.ProcessMessages();
+            Assert.AreEqual(testObject.stringField, text2);
         }
         
         [Test]
@@ -192,6 +210,12 @@ namespace DLS.MessageSystem.Tests.Messaging
             MessageSystem.MessageManager.Send(new StringMessage(text), gamePlayChannel, systemChannel, uiChannel);
             MessageSystem.MessageManager.ProcessMessages();
             Assert.AreEqual(testObject.StringProp, text);
+            
+            var text2 = "Multiple Test My Message";
+            MessageSystem.MessageManager.Send(new StringMessage(text2), MessageChannels.Gameplay, MessageChannels.System, MessageChannels.UI);
+            MessageSystem.MessageManager.ProcessMessages();
+            Assert.AreEqual(testObject.StringProp, text2);
+
         }
 
         [Test]
@@ -205,6 +229,13 @@ namespace DLS.MessageSystem.Tests.Messaging
             MessageSystem.MessageManager.ProcessMessages();
             Assert.AreEqual("Tacos", testObject.stringField);
             Assert.AreEqual(420, testObject.intField);
+            
+            testObject.stringField = "Burritos";
+            testObject.intField = 1234;
+            MessageSystem.MessageManager.Send(MessageChannels.System, new SystemMessage(testObject));
+            MessageSystem.MessageManager.ProcessMessages();
+            Assert.AreEqual("Burritos", testObject.stringField);
+            Assert.AreEqual(1234, testObject.intField);
         }
 
         [Test]
@@ -215,6 +246,10 @@ namespace DLS.MessageSystem.Tests.Messaging
             MessageSystem.MessageManager.Send(systemChannel, new GameplayMessage("Tacos"));
             MessageSystem.MessageManager.ProcessMessages();
             Assert.AreEqual("Tacos", testObject.StringProp);
+            
+            MessageSystem.MessageManager.Send(MessageChannels.System, new GameplayMessage("Burritos"));
+            MessageSystem.MessageManager.ProcessMessages();
+            Assert.AreEqual("Burritos", testObject.StringProp);
         }
 
         [Test]
@@ -315,7 +350,7 @@ namespace DLS.MessageSystem.Tests.Messaging
         public void Message_Send_Non_Existing_Channel()
         {
             // Arrange
-            IMessageChannel nonExistingChannel = new CustomChannel("");
+            IMessageChannel nonExistingChannel = new CustomChannel("taco");
 
             // Act & Assert
             Assert.Throws<InvalidOperationException>(() => MessageSystem.MessageManager.SendImmediate(nonExistingChannel, new StringMessage("Test")));
@@ -336,41 +371,33 @@ namespace DLS.MessageSystem.Tests.Messaging
             // Assert
             Assert.AreEqual(originalMessage.Message, deserializedMessage.Message);
         }
-
-        [Test]
-        [Category("Messaging System Tests")]
-        [Order(17)]
-        public void Message_Send_Serialize_Deserialize_Binary()
-        {
-            // Arrange
-            var originalMessage = new StringMessage("Serialize Test");
-            var serializedMessage = MessageSystem.MessageManager.SerializeMessageToBinary(originalMessage);
-
-            // Act
-            var deserializedMessage = MessageSystem.MessageManager.DeserializeMessageFromBinary<StringMessage>(serializedMessage);
-
-            // Assert
-            Assert.AreEqual(originalMessage.Message, deserializedMessage.Message);
-        }
         
         [Test]
         [Category("Messaging System Tests")]
-        [Order(18)]
+        [Order(17)]
         public async Task Message_Send_String_To_Gameplay_Immediate_Async()
         {
             var text = "Test Async";
             await MessageSystem.MessageManager.SendImmediateAsync(gamePlayChannel, new GameplayMessage(text));
             Assert.AreEqual(testObject.stringField, text);
+            
+            var text2 = "Test My Async";
+            await MessageSystem.MessageManager.SendImmediateAsync(MessageChannels.Gameplay, new GameplayMessage(text2));
+            Assert.AreEqual(testObject.stringField, text2);
         }
         
         [Test]
         [Category("Messaging System Tests")]
-        [Order(19)]
+        [Order(18)]
         public async Task Message_Send_String_To_Multiple_Immediate_Async()
         {
             var text = "Test Multiple Async";
             await MessageSystem.MessageManager.SendImmediateAsync(new GameplayMessage(text), gamePlayChannel, systemChannel, uiChannel);
             Assert.AreEqual(testObject.StringProp, text);
+            
+            var text2 = "Test Multiple My Async";
+            await MessageSystem.MessageManager.SendImmediateAsync(new GameplayMessage(text2), MessageChannels.Gameplay, MessageChannels.System, MessageChannels.UI);
+            Assert.AreEqual(testObject.StringProp, text2);
         }
 
         [Test]
@@ -382,6 +409,11 @@ namespace DLS.MessageSystem.Tests.Messaging
             await MessageSystem.MessageManager.SendAsync(new GameplayMessage(text), gamePlayChannel, systemChannel, uiChannel);
             await MessageSystem.MessageManager.ProcessMessagesAsync();
             Assert.AreEqual(testObject.StringProp, text);
+            
+            var text2 = "Test Queued Multiple My Async";
+            await MessageSystem.MessageManager.SendAsync(new GameplayMessage(text2), MessageChannels.Gameplay, MessageChannels.System, MessageChannels.UI);
+            await MessageSystem.MessageManager.ProcessMessagesAsync();
+            Assert.AreEqual(testObject.StringProp, text2);
         }
  
         [Test]
@@ -394,6 +426,12 @@ namespace DLS.MessageSystem.Tests.Messaging
             await MessageSystem.MessageManager.SendImmediateAsync(systemChannel, new SystemMessage(testObject));
             Assert.AreEqual("Potato", testObject.stringField);
             Assert.AreEqual(9999, testObject.intField);
+            
+            testObject.stringField = "Burrito";
+            testObject.intField = 1234;
+            await MessageSystem.MessageManager.SendImmediateAsync(MessageChannels.System, new SystemMessage(testObject));
+            Assert.AreEqual("Burrito", testObject.stringField);
+            Assert.AreEqual(1234, testObject.intField);
         }
 
         [Test]
@@ -403,6 +441,9 @@ namespace DLS.MessageSystem.Tests.Messaging
         {
             await MessageSystem.MessageManager.SendImmediateAsync(systemChannel, new GameplayMessage("Pirates"));
             Assert.AreEqual("Pirates", testObject.StringProp);
+            
+            await MessageSystem.MessageManager.SendImmediateAsync(MessageChannels.System, new GameplayMessage("Ninjas"));
+            Assert.AreEqual("Ninjas", testObject.StringProp);
         }
 
         [Test]
@@ -435,6 +476,11 @@ namespace DLS.MessageSystem.Tests.Messaging
             await MessageSystem.MessageManager.SendAsync(gamePlayChannel, new GameplayMessage(text));
             await MessageSystem.MessageManager.ProcessMessagesAsync();
             Assert.AreEqual(testObject.stringField, text);
+            
+            var text2 = "Test My Message Async";
+            await MessageSystem.MessageManager.SendAsync(MessageChannels.Gameplay, new GameplayMessage(text2));
+            await MessageSystem.MessageManager.ProcessMessagesAsync();
+            Assert.AreEqual(testObject.stringField, text2);
         }
 
         [Test]
@@ -448,6 +494,13 @@ namespace DLS.MessageSystem.Tests.Messaging
             await MessageSystem.MessageManager.ProcessMessagesAsync();
             Assert.AreEqual("Burrito", testObject.stringField);
             Assert.AreEqual(1234, testObject.intField);
+            
+            testObject.stringField = "Taco";
+            testObject.intField = 420;
+            await MessageSystem.MessageManager.SendAsync(MessageChannels.System, new SystemMessage(testObject));
+            await MessageSystem.MessageManager.ProcessMessagesAsync();
+            Assert.AreEqual("Taco", testObject.stringField);
+            Assert.AreEqual(420, testObject.intField);
         }
 
         [Test]
@@ -458,6 +511,10 @@ namespace DLS.MessageSystem.Tests.Messaging
             await MessageSystem.MessageManager.SendAsync(systemChannel, new GameplayMessage("Burritos"));
             await MessageSystem.MessageManager.ProcessMessagesAsync();
             Assert.AreEqual("Burritos", testObject.StringProp);
+            
+            await MessageSystem.MessageManager.SendAsync(MessageChannels.System, new GameplayMessage("Tacos"));
+            await MessageSystem.MessageManager.ProcessMessagesAsync();
+            Assert.AreEqual("Tacos", testObject.StringProp);
         }
 
         [Test]
@@ -482,8 +539,5 @@ namespace DLS.MessageSystem.Tests.Messaging
             Assert.AreEqual("Burritos", testObject.stringField);
             Assert.AreEqual(1234, testObject.intField);
         }
-
-
-
     }
 }

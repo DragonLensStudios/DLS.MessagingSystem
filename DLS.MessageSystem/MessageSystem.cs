@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using DLS.MessageSystem.Messaging.MessageChannels;
+using DLS.MessageSystem.Messaging.MessageChannels.Comparers;
 using DLS.MessageSystem.Messaging.MessageChannels.Enums;
 using DLS.MessageSystem.Messaging.MessageChannels.Interfaces;
 using DLS.MessageSystem.Messaging.MessageWrappers;
@@ -30,8 +31,6 @@ namespace DLS.MessageSystem
     /// </summary>
     public static class MessageSystem
     {
-
-
         /// <summary>
         ///  The message manager that handles messages.
         ///  Messages can be sent immediately or queued for later processing.
@@ -49,9 +48,9 @@ namespace DLS.MessageSystem
         public static class MessageManager
         {
             // Channels, handlers, message queues, and priorities
-            private static readonly Dictionary<IMessageChannel, List<Delegate>> _channels = new();
-            private static readonly ConcurrentDictionary<IMessageChannel, ConcurrentQueue<IMessageEnvelope>> _messageQueues = new();
-            private static readonly ConcurrentDictionary<IMessageChannel, int> _priorities = new();
+            private static readonly Dictionary<IMessageChannel, List<Action<IMessageEnvelope>>> _channels = new(new MessageChannelComparer());
+            private static readonly ConcurrentDictionary<IMessageChannel, ConcurrentQueue<IMessageEnvelope>> _messageQueues = new(new MessageChannelComparer());
+            private static readonly ConcurrentDictionary<IMessageChannel, int> _priorities = new(new MessageChannelComparer());
 
             // Lock object for thread safety
             private static readonly object _lockObject = new();
@@ -64,7 +63,6 @@ namespace DLS.MessageSystem
             public static void ProcessMessages()
             {
                 var channels = _priorities.Keys.OrderBy(key => _priorities[key]).ToList();
-
                 Parallel.ForEach(channels, ProcessChannelMessages);
             }
 
@@ -162,7 +160,21 @@ namespace DLS.MessageSystem
                     var action = (Action<IMessageEnvelope>)handler;
                     action(envelope);
                 }
-            }         
+            }  
+            
+            /// <summary>
+            ///  Send a message to be processed immediately.
+            ///  Messages are processed synchronously.
+            /// </summary>
+            /// <param name="channel"><see cref="MessageChannels"/></param>
+            /// <param name="message"><see cref="message"/></param>
+            /// <typeparam name="T">Type</typeparam>
+            public static void SendImmediate<T>(MessageChannels channel, T message)
+            {
+                // Send the message to the channel
+                // Wrap the channel in a default message channel
+                SendImmediate(new DefaultMessageChannel(channel), message);
+            }
             
             /// <summary>
             ///  Send a message to be processed immediately.
@@ -177,6 +189,23 @@ namespace DLS.MessageSystem
                 foreach (var channel in channels)
                 {
                     SendImmediate(channel, message);
+                }
+            }
+            
+            /// <summary>
+            ///  Send a message to be processed immediately.
+            ///  Messages are processed synchronously.
+            /// </summary>
+            /// <param name="message"></param>
+            /// <param name="channels"></param>
+            /// <typeparam name="T"></typeparam>
+            public static void SendImmediate<T>(T message, params MessageChannels[] channels)
+            {
+                // Send the message to each channel immediately
+                foreach (var channel in channels)
+                {
+                    // Wrap the channel in a default message channel
+                    SendImmediate(new DefaultMessageChannel(channel), message);
                 }
             }
             
@@ -202,6 +231,20 @@ namespace DLS.MessageSystem
 
                 Console.WriteLine($"Message of type {typeof(T).Name} queued for channel {channel}");
             }
+            
+            /// <summary>
+            ///  Send a message to be processed later Synchronously.
+            ///  Messages are processed Synchronously.
+            /// </summary>
+            /// <param name="channel"><see cref="MessageChannels"/></param>
+            /// <param name="message"><see cref="message"/></param>
+            /// <typeparam name="T">Type</typeparam>
+            public static void Send<T>(MessageChannels channel, T message)
+            {
+                // Send the message to the channel
+                // Wrap the channel in a default message channel
+                Send(new DefaultMessageChannel(channel), message);
+            }
 
             /// <summary>
             ///  Send a message to be processed later Synchronously.
@@ -217,6 +260,24 @@ namespace DLS.MessageSystem
                 foreach (var channel in channels)
                 {
                     Send(channel, message);
+                }
+            }
+            
+            /// <summary>
+            ///  Send a message to be processed later Synchronously.
+            ///  Messages are processed Synchronously.
+            /// </summary>
+            /// <param name="message"><see cref="message"/></param>
+            /// <param name="channels"><see cref="MessageChannels"/></param>
+            /// <typeparam name="T">Type</typeparam>
+            public static void Send<T>(T message, params MessageChannels[] channels)
+            {
+                // Send the message to each channel
+                // Enqueue the message for later processing
+                foreach (var channel in channels)
+                {
+                    // Wrap the channel in a default message channel
+                    Send(new DefaultMessageChannel(channel), message);
                 }
             }
             
@@ -242,8 +303,6 @@ namespace DLS.MessageSystem
                 Console.WriteLine($"Message of type {typeof(T).Name} broadcasted immediately");
 #endif                
             }
-
-            // Broadcast a message to be processed later
             
             /// <summary>
             ///  Broadcast a message to be processed later.
@@ -304,6 +363,20 @@ namespace DLS.MessageSystem
                 // Wait for all the send tasks to complete
                 await Task.WhenAll(sendTasks);
             }
+            
+            /// <summary>
+            ///  Send a message asynchronously to be processed immediately.
+            ///  Messages are processed asynchronously.
+            /// </summary>
+            /// <param name="channel"><see cref="MessageChannels"/></param>
+            /// <param name="message"><see cref="message"/></param>
+            /// <typeparam name="T">Type</typeparam>
+            public static async Task SendImmediateAsync<T>(MessageChannels channel, T message)
+            {
+                // Send the message to the channel asynchronously
+                // Wrap the channel in a default message channel
+                await SendImmediateAsync(new DefaultMessageChannel(channel), message);
+            }
 
             /// <summary>
             ///  Send a message asynchronously to be processed immediately.
@@ -319,7 +392,21 @@ namespace DLS.MessageSystem
                 // Wait for all the send tasks to complete
                 await Task.WhenAll(sendTasks);
             }
-
+            
+            /// <summary>
+            ///  Send a message asynchronously to be processed immediately.
+            ///  Messages are processed asynchronously.
+            /// </summary>
+            /// <param name="message"><see cref="message"/></param>
+            /// <param name="channels"><see cref="MessageChannels"/></param>
+            /// <typeparam name="T">Type</typeparam>
+            public static async Task SendImmediateAsync<T>(T message, params MessageChannels[] channels)
+            {
+                // Send the message to each channel asynchronously and process the message asynchronously immediately
+                var sendTasks = channels.Select(channel => SendImmediateAsync(new DefaultMessageChannel(channel), message));
+                // Wait for all the send tasks to complete
+                await Task.WhenAll(sendTasks);
+            }
             
             /// <summary>
             ///  Send a message asynchronously to be processed later.
@@ -349,6 +436,20 @@ namespace DLS.MessageSystem
                 // Wait for the task to complete
                 await Task.CompletedTask;
             }
+            
+            /// <summary>
+            ///  Send a message asynchronously to be processed later.
+            /// Messages are processed asynchronously.
+            /// </summary>
+            /// <param name="channel"><see cref="MessageChannels"/></param>
+            /// <param name="message"><see cref="message"/></param>
+            /// <typeparam name="T">Type</typeparam>
+            public static async Task SendAsync<T>(MessageChannels channel, T message)
+            {
+                // Send the message to the channel asynchronously
+                // Wrap the channel in a default message channel
+                await SendAsync(new DefaultMessageChannel(channel), message);
+            }
 
             /// <summary>
             ///  Send a message asynchronously to be processed later.
@@ -364,6 +465,23 @@ namespace DLS.MessageSystem
                 // Wait for all the send tasks to complete
                 await Task.WhenAll(sendTasks);
             }
+            
+            /// <summary>
+            ///  Send a message asynchronously to be processed later.
+            ///  Messages are processed asynchronously.
+            /// </summary>
+            /// <param name="message"><see cref="message"/></param>
+            /// <param name="channels"><see cref="MessageChannels"/></param>
+            /// <typeparam name="T">Type</typeparam>
+            public static async Task SendAsync<T>(T message, params MessageChannels[] channels)
+            {
+                // Send the message to each channel asynchronously
+                var sendTasks = channels.Select(channel => SendAsync(new DefaultMessageChannel(channel), message));
+                // Wait for all the send tasks to complete
+                await Task.WhenAll(sendTasks);
+            }
+            
+
             
             /// <summary>
             ///  Broadcast a message asynchronously to be processed immediately.
@@ -433,12 +551,16 @@ namespace DLS.MessageSystem
                 // Lock object for thread safety
                 lock (_lockObject)
                 {
+                    if (channel == null || string.IsNullOrWhiteSpace(channel.Name))
+                    {
+                        throw new ArgumentException("Channel must have a valid name.");
+                    }
                     // Check if the channel has handlers registered
                     // If the channel does not have handlers registered
                     // Register the handler for the channel with the specified priority
                     if (!_channels.ContainsKey(channel))
                     {
-                        _channels[channel] = new List<Delegate>() { handler };
+                        _channels[channel] = new List<Action<IMessageEnvelope>> { handler };
                         _messageQueues[channel] = new ConcurrentQueue<IMessageEnvelope>();
                         _priorities[channel] = priority;
                     }
@@ -500,7 +622,7 @@ namespace DLS.MessageSystem
             /// <summary>
             /// Register a handler for multiple channels with a specific priority.
             /// The handler is of type <see cref="Action{IMessageEnvelope}"/>.
-            /// The channels are of type <see cref="MessageChannels.Enums.MessageChannels"/>.
+            /// The channels are of type <see cref="MessageChannels"/>.
             /// The priority is of type <see cref="int"/>.
             /// The handler is registered for the channels with the specified priority.
             /// Using a lock object for thread safety.
@@ -535,6 +657,10 @@ namespace DLS.MessageSystem
                 // Using a lock object for thread safety
                 lock (_lockObject)
                 {
+                    if (channel == null || string.IsNullOrWhiteSpace(channel.Name))
+                    {
+                        throw new ArgumentException("Channel must have a valid name.");
+                    }
                     // Check if the channel has handlers registered
                     if (_channels.ContainsKey(channel))
                     {
@@ -565,7 +691,7 @@ namespace DLS.MessageSystem
             /// <summary>
             /// Unregister a handler for a channel.
             /// The handler is of type <see cref="Action{IMessageEnvelope}"/>.
-            /// The channel is of type <see cref="MessageChannels.Enums.MessageChannels"/>.
+            /// The channel is of type <see cref="MessageChannels"/>.
             /// Using a lock object for thread safety.
             /// The handler is removed from the channel.
             /// </summary>
@@ -580,7 +706,7 @@ namespace DLS.MessageSystem
             /// <summary>
             /// Unregister a handler for multiple channels.
             /// The handler is of type <see cref="Action{IMessageEnvelope}"/>.
-            /// The channels are of type <see cref="MessageChannels.Enums.MessageChannels"/>.
+            /// The channels are of type <see cref="MessageChannels"/>.
             /// Using a lock object for thread safety.
             /// The handler is removed from the channels.
             /// </summary>
@@ -603,7 +729,7 @@ namespace DLS.MessageSystem
             /// </summary>
             /// <param name="channel"><see cref="IMessageChannel"/> </param>
             /// <returns><list type="Delegate"></list></returns>
-            private static List<Delegate> GetChannelHandlers(IMessageChannel channel)
+            private static List<Action<IMessageEnvelope>> GetChannelHandlers(IMessageChannel channel)
             {
                 // Get the handlers for a channel
                 // The handlers are of type Delegate
@@ -618,7 +744,7 @@ namespace DLS.MessageSystem
                 }
 
                 // Return an empty list if no handlers are registered
-                return new List<Delegate>();
+                return new List<Action<IMessageEnvelope>>();
             }
             
             /// <summary>
@@ -650,47 +776,6 @@ namespace DLS.MessageSystem
                 // Return the message of type 
                 // Using Newtonsoft.Json to deserialize the message from JSON data
                 return JsonConvert.DeserializeObject<T>(json);
-            }
-
-            // Serialize message to binary
-            /// <summary>
-            ///  Serialize a message to binary data.
-            ///  The message is of type T.
-            /// </summary>
-            /// <param name="message"><see cref="message"/></param>
-            /// <typeparam name="T">Type</typeparam>
-            /// <returns></returns>
-            public static byte[] SerializeMessageToBinary<T>(T message)
-            {
-                // Serialize message to binary
-                using (var stream = new System.IO.MemoryStream())
-                {
-                    // Create a binary formatter and serialize the message
-                    var formatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
-                    // Serialize the message to binary data
-                    formatter.Serialize(stream, message);
-                    // Return the binary data as a byte array
-                    return stream.ToArray();
-                }
-            }
-            
-            /// <summary>
-            ///  Deserialize a message from binary data.
-            ///  The message is of type T.
-            /// </summary>
-            /// <param name="data"><see cref="data"/></param>
-            /// <typeparam name="T">Type</typeparam>
-            /// <returns></returns>
-            public static T DeserializeMessageFromBinary<T>(byte[] data)
-            {
-                // Deserialize message from binary
-                using (var stream = new System.IO.MemoryStream(data))
-                {
-                    // Create a binary formatter and deserialize the message
-                    var formatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
-                    // Deserialize the message from binary data
-                    return (T)formatter.Deserialize(stream);
-                }
             }
         }
     }
