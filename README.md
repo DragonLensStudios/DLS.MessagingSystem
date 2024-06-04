@@ -300,18 +300,6 @@ var serializedMessage = MessageSystem.MessageManager.SerializeMessageToJson(new 
 var deserializedMessage = MessageSystem.MessageManager.DeserializeMessageFromJson<GameplayMessage>(serializedMessage);
 ```
 
-#### Serialize Message to Binary
-
-```csharp
-var serializedMessage = MessageSystem.MessageManager.SerializeMessageToBinary(new GameplayMessage("Serialize Test"));
-```
-
-#### Deserialize Message from Binary
-
-```csharp
-var deserializedMessage = MessageSystem.MessageManager.DeserializeMessageFromBinary<GameplayMessage>(serializedMessage);
-```
-
 ## Examples
 
 ### Sending a Complex Message

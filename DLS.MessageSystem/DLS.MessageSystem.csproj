@@ -6,9 +6,11 @@
     <LangVersion>9</LangVersion>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageId>DLS.MessageSystem</PackageId>
-    <Version>2.0.1</Version>
+    <Version>2.1.0</Version>
     <PackageReleaseNotes>
-      Fixed some mistakes in the documentation.
+      Updated Sending messages to work the Enum again, Cleanup, refactor, and added more tests.
+      Removed Binary formatter for serialize and deserialize,
+      Made working with the MessageChannels enum to work again properly, made a comparer to compare the name.
     </PackageReleaseNotes>
     <Authors>Monydragon</Authors>
     <Company>Dragon Lens Studios</Company>
