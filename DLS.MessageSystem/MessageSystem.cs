@@ -3,7 +3,11 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using DLS.MessageSystem.Messaging.MessageChannels;
+using DLS.MessageSystem.Messaging.MessageChannels.Enums;
 using DLS.MessageSystem.Messaging.MessageChannels.Interfaces;
+using DLS.MessageSystem.Messaging.MessageWrappers;
+using DLS.MessageSystem.Messaging.MessageWrappers.Interfaces;
 using Newtonsoft.Json;
 
 namespace DLS.MessageSystem
@@ -26,52 +30,7 @@ namespace DLS.MessageSystem
     /// </summary>
     public static class MessageSystem
     {
-        /// <summary>
-        ///  A message envelope that wraps a message and its type.
-        /// </summary>
-        public interface IMessageEnvelope
-        {
-            Type MessageType { get; }
-        }
 
-        /// <summary>
-        ///  A message envelope that wraps a message and its type.
-        ///  The message is of type T.
-        /// </summary>
-        /// <typeparam name="T">Type</typeparam>
-        public interface IMessageEnvelope<out T> : IMessageEnvelope
-        {
-            T? Message { get; }
-        }
-
-        /// <summary>
-        ///  A message envelope that wraps a message and its type.
-        ///  The message is of type T.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        public class MessageEnvelope<T> : IMessageEnvelope<T?>
-        {
-            public T? Message { get; }
-            public Type MessageType { get; } = typeof(T);
-
-            public MessageEnvelope(T? message)
-            {
-                Message = message;
-            }
-        }
-
-        /// <summary>
-        ///  A Message Wrapper that sends a <see cref="IMessageEnvelope{T}"/>
-        /// </summary>
-        /// <param name="envelope"></param>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        public static T? Message<T>(this IMessageEnvelope? envelope) where T : struct
-        {
-            // Wrap the message in an envelope of type T
-            IMessageEnvelope<T>? e = envelope as IMessageEnvelope<T>;
-            return e?.Message;
-        }
 
         /// <summary>
         ///  The message manager that handles messages.
@@ -520,6 +479,43 @@ namespace DLS.MessageSystem
                     RegisterForChannel<T>(channel, handler, priority);
                 }
             }
+            
+            /// <summary>
+            /// Register a handler for a channel with a specific priority.
+            /// The handler is of type <see cref="Action{IMessageEnvelope}"/>.
+            /// The channel is of type <see cref="MessageChannels"/>.
+            /// The priority is of type <see cref="int"/>.
+            /// The handler is registered for the channel with the specified priority.
+            /// Using a lock object for thread safety.
+            /// </summary>
+            /// <typeparam name="T">The type of the message.</typeparam>
+            /// <param name="channel">The channel to register the handler for.</param>
+            /// <param name="handler">The handler to register.</param>
+            /// <param name="priority">The priority of the handler.</param>
+            public static void RegisterForChannel<T>(MessageChannels channel, Action<IMessageEnvelope> handler, int priority = 0)
+            {
+                RegisterForChannel<T>(new DefaultMessageChannel(channel), handler, priority);
+            }
+            
+            /// <summary>
+            /// Register a handler for multiple channels with a specific priority.
+            /// The handler is of type <see cref="Action{IMessageEnvelope}"/>.
+            /// The channels are of type <see cref="MessageChannels.Enums.MessageChannels"/>.
+            /// The priority is of type <see cref="int"/>.
+            /// The handler is registered for the channels with the specified priority.
+            /// Using a lock object for thread safety.
+            /// </summary>
+            /// <typeparam name="T">The type of the message.</typeparam>
+            /// <param name="handler">The handler to register.</param>
+            /// <param name="priority">The priority of the handler.</param>
+            /// <param name="channels">The channels to register the handler for.</param>
+            public static void RegisterForChannel<T>(Action<IMessageEnvelope> handler, int priority = 0, params MessageChannels[] channels)
+            {
+                foreach (var channel in channels)
+                {
+                    RegisterForChannel<T>(new DefaultMessageChannel(channel), handler, priority);
+                }
+            }
 
             
             /// <summary>
@@ -563,6 +559,39 @@ namespace DLS.MessageSystem
                 foreach (var channel in channels)
                 {
                     UnregisterForChannel<T>(channel, handler);
+                }
+            }
+            
+            /// <summary>
+            /// Unregister a handler for a channel.
+            /// The handler is of type <see cref="Action{IMessageEnvelope}"/>.
+            /// The channel is of type <see cref="MessageChannels.Enums.MessageChannels"/>.
+            /// Using a lock object for thread safety.
+            /// The handler is removed from the channel.
+            /// </summary>
+            /// <typeparam name="T">The type of the message.</typeparam>
+            /// <param name="channel">The channel to unregister the handler from.</param>
+            /// <param name="handler">The handler to unregister.</param>
+            public static void UnregisterForChannel<T>(MessageChannels channel, Action<IMessageEnvelope> handler)
+            {
+                UnregisterForChannel<T>(new DefaultMessageChannel(channel), handler);
+            }
+            
+            /// <summary>
+            /// Unregister a handler for multiple channels.
+            /// The handler is of type <see cref="Action{IMessageEnvelope}"/>.
+            /// The channels are of type <see cref="MessageChannels.Enums.MessageChannels"/>.
+            /// Using a lock object for thread safety.
+            /// The handler is removed from the channels.
+            /// </summary>
+            /// <typeparam name="T">The type of the message.</typeparam>
+            /// <param name="handler">The handler to unregister.</param>
+            /// <param name="channels">The channels to unregister the handler from.</param>
+            public static void UnregisterForChannel<T>(Action<IMessageEnvelope> handler, params MessageChannels[] channels)
+            {
+                foreach (var channel in channels)
+                {
+                    UnregisterForChannel<T>(new DefaultMessageChannel(channel), handler);
                 }
             }
             

@@ -1,7 +1,8 @@
-using DLS.MessageSystem.Messaging;
 using DLS.MessageSystem.Messaging.MessageChannels;
 using DLS.MessageSystem.Messaging.MessageChannels.Enums;
 using DLS.MessageSystem.Messaging.MessageChannels.Interfaces;
+using DLS.MessageSystem.Messaging.MessageWrappers.Extensions;
+using DLS.MessageSystem.Messaging.MessageWrappers.Interfaces;
 using DLS.MessageSystem.Tests.Models;
 
 namespace DLS.MessageSystem.Tests.Messaging
@@ -29,37 +30,49 @@ namespace DLS.MessageSystem.Tests.Messaging
             testObject = new TestClass();
 
             // Register message handlers
+            MessageSystem.MessageManager.RegisterForChannel<GameplayMessage>(MessageChannels.Gameplay, GameplayMessageHandler);
             MessageSystem.MessageManager.RegisterForChannel<GameplayMessage>(gamePlayChannel, GameplayMessageHandler);
+            MessageSystem.MessageManager.RegisterForChannel<GameplayMessage>(MessageChannels.Gameplay, GameplayMessageHandler);
+            MessageSystem.MessageManager.RegisterForChannel<GameplayMessage>(MessageChannels.UI, GameplayMessageHandler);
             MessageSystem.MessageManager.RegisterForChannel<SystemMessage>(systemChannel, SystemMessageHandler);;
             MessageSystem.MessageManager.RegisterForChannel<GameplayMessage>(systemChannel, GamePlayMessageHandler2);
             MessageSystem.MessageManager.RegisterForChannel<GameplayMessage>(tacoCustomChannel, TacoCustomChannel);
             
             MessageSystem.MessageManager.RegisterForChannel<SystemMessage>(AwesomeCustomChannelHandler, 0, awesomeCustomChannel, gamePlayChannel);
             MessageSystem.MessageManager.RegisterForChannel<StringMessage>(StringMessageHandler, 0, gamePlayChannel, systemChannel, uiChannel);
+            MessageSystem.MessageManager.RegisterForChannel<SystemMessage>(AnotherSystemHandler, 0, systemChannel, uiChannel);
+            MessageSystem.MessageManager.RegisterForChannel<SystemMessage>(AnotherSystemHandler, 0, MessageChannels.UI, MessageChannels.Achievement);
         }
-        
+
+
+
         [OneTimeTearDown]
         public void OneTimeTearDown()
         {
             
-            // Unregister message handlers
+            // Register message handlers
+            MessageSystem.MessageManager.UnregisterForChannel<GameplayMessage>(MessageChannels.Gameplay, GameplayMessageHandler);
             MessageSystem.MessageManager.UnregisterForChannel<GameplayMessage>(gamePlayChannel, GameplayMessageHandler);
+            MessageSystem.MessageManager.UnregisterForChannel<GameplayMessage>(MessageChannels.Gameplay, GameplayMessageHandler);
+            MessageSystem.MessageManager.UnregisterForChannel<GameplayMessage>(MessageChannels.UI, GameplayMessageHandler);
             MessageSystem.MessageManager.UnregisterForChannel<SystemMessage>(systemChannel, SystemMessageHandler);;
             MessageSystem.MessageManager.UnregisterForChannel<GameplayMessage>(systemChannel, GamePlayMessageHandler2);
             MessageSystem.MessageManager.UnregisterForChannel<GameplayMessage>(tacoCustomChannel, TacoCustomChannel);
-
+            
             MessageSystem.MessageManager.UnregisterForChannel<SystemMessage>(AwesomeCustomChannelHandler, awesomeCustomChannel, gamePlayChannel);
             MessageSystem.MessageManager.UnregisterForChannel<StringMessage>(StringMessageHandler, gamePlayChannel, systemChannel, uiChannel);
+            MessageSystem.MessageManager.UnregisterForChannel<SystemMessage>(AnotherSystemHandler, systemChannel, uiChannel);
+            MessageSystem.MessageManager.UnregisterForChannel<SystemMessage>(AnotherSystemHandler, MessageChannels.UI, MessageChannels.Achievement);
         }
 
-        private void TacoCustomChannel(MessageSystem.IMessageEnvelope message)
+        private void TacoCustomChannel(IMessageEnvelope message)
         {
             if (!message.Message<GameplayMessage>().HasValue) return;
             var data = message.Message<GameplayMessage>().Value;
             testObject.StringProp = data.Message;
         }
 
-        private void AwesomeCustomChannelHandler(MessageSystem.IMessageEnvelope message)
+        private void AwesomeCustomChannelHandler(IMessageEnvelope message)
         {
             if (!message.Message<SystemMessage>().HasValue) return;
             var data = message.Message<SystemMessage>().Value;
@@ -67,29 +80,36 @@ namespace DLS.MessageSystem.Tests.Messaging
             testObject.stringField = data.TestObject.stringField;
         }
 
-        private void StringMessageHandler(MessageSystem.IMessageEnvelope message)
+        private void StringMessageHandler(IMessageEnvelope message)
         {
             if(!message.Message<StringMessage>().HasValue) return;
             var data = message.Message<StringMessage>().Value;
             testObject.StringProp = data.Message;
         }
 
-        private void GamePlayMessageHandler2(MessageSystem.IMessageEnvelope message)
+        private void GamePlayMessageHandler2(IMessageEnvelope message)
         {
             if(!message.Message<GameplayMessage>().HasValue) return;
             var data = message.Message<GameplayMessage>().Value;
             testObject.StringProp = data.Message;
         }
 
-        private void SystemMessageHandler(MessageSystem.IMessageEnvelope message)
+        private void SystemMessageHandler(IMessageEnvelope message)
         {
             if(!message.Message<SystemMessage>().HasValue) return;
             var data = message.Message<SystemMessage>().Value;
             testObject.intField = data.TestObject.intField;
             testObject.stringField = data.TestObject.stringField;
         }
+        
+        private void AnotherSystemHandler(IMessageEnvelope message)
+        {
+            if (!message.Message<SystemMessage>().HasValue) return;
+            var data = message.Message<SystemMessage>().Value;
+            testObject.intField = data.TestObject.intField;
+            testObject.stringField = data.TestObject.stringField;    }
 
-        private void GameplayMessageHandler(MessageSystem.IMessageEnvelope message)
+        private void GameplayMessageHandler(IMessageEnvelope message)
         {
             if(!message.Message<GameplayMessage>().HasValue) return;
             var data = message.Message<GameplayMessage>().Value;
@@ -225,13 +245,13 @@ namespace DLS.MessageSystem.Tests.Messaging
         public void Message_Send_With_Priority()
         {
             // Arrange
-            var lowPriorityHandler = new Action<MessageSystem.IMessageEnvelope>(envelope =>
+            var lowPriorityHandler = new Action<IMessageEnvelope>(envelope =>
             {
                 var message = envelope.Message<StringMessage>().Value;
                 testObject.StringProp = message.Message + " Low";
             });
 
-            var highPriorityHandler = new Action<MessageSystem.IMessageEnvelope>(envelope =>
+            var highPriorityHandler = new Action<IMessageEnvelope>(envelope =>
             {
                 var message = envelope.Message<StringMessage>().Value;
                 testObject.StringProp = message.Message + " High";
@@ -253,7 +273,7 @@ namespace DLS.MessageSystem.Tests.Messaging
         public void Message_Unregister_Handler()
         {
             // Arrange
-            var handler = new Action<MessageSystem.IMessageEnvelope>(envelope =>
+            var handler = new Action<IMessageEnvelope>(envelope =>
             {
                 var message = envelope.Message<StringMessage>().Value;
                 testObject.StringProp = message.Message;
@@ -390,7 +410,7 @@ namespace DLS.MessageSystem.Tests.Messaging
         public async Task Message_Broadcast_All_Channels_Immediate_Async()
         {
             // Arrange
-            var handler = new Action<MessageSystem.IMessageEnvelope>(envelope =>
+            var handler = new Action<IMessageEnvelope>(envelope =>
             {
                 var message = envelope.Message<StringMessage>().Value;
                 testObject.StringProp = message.Message;
