@@ -68,14 +68,14 @@ namespace DLS.MessageSystem.Tests.Messaging
         private void TacoCustomChannel(IMessageEnvelope message)
         {
             if (!message.Message<GameplayMessage>().HasValue) return;
-            var data = message.Message<GameplayMessage>().Value;
+            var data = message.Message<GameplayMessage>().GetValueOrDefault();
             testObject.StringProp = data.Message;
         }
 
         private void AwesomeCustomChannelHandler(IMessageEnvelope message)
         {
             if (!message.Message<SystemMessage>().HasValue) return;
-            var data = message.Message<SystemMessage>().Value;
+            var data = message.Message<SystemMessage>().GetValueOrDefault();
             testObject.intField = data.TestObject.intField;
             testObject.stringField = data.TestObject.stringField;
         }
@@ -83,21 +83,21 @@ namespace DLS.MessageSystem.Tests.Messaging
         private void StringMessageHandler(IMessageEnvelope message)
         {
             if(!message.Message<StringMessage>().HasValue) return;
-            var data = message.Message<StringMessage>().Value;
+            var data = message.Message<StringMessage>().GetValueOrDefault();
             testObject.StringProp = data.Message;
         }
 
         private void GamePlayMessageHandler2(IMessageEnvelope message)
         {
             if(!message.Message<GameplayMessage>().HasValue) return;
-            var data = message.Message<GameplayMessage>().Value;
+            var data = message.Message<GameplayMessage>().GetValueOrDefault();
             testObject.StringProp = data.Message;
         }
 
         private void SystemMessageHandler(IMessageEnvelope message)
         {
             if(!message.Message<SystemMessage>().HasValue) return;
-            var data = message.Message<SystemMessage>().Value;
+            var data = message.Message<SystemMessage>().GetValueOrDefault();
             testObject.intField = data.TestObject.intField;
             testObject.stringField = data.TestObject.stringField;
         }
@@ -105,14 +105,15 @@ namespace DLS.MessageSystem.Tests.Messaging
         private void AnotherSystemHandler(IMessageEnvelope message)
         {
             if (!message.Message<SystemMessage>().HasValue) return;
-            var data = message.Message<SystemMessage>().Value;
+            var data = message.Message<SystemMessage>().GetValueOrDefault();
             testObject.intField = data.TestObject.intField;
-            testObject.stringField = data.TestObject.stringField;    }
+            testObject.stringField = data.TestObject.stringField;
+        }
 
         private void GameplayMessageHandler(IMessageEnvelope message)
         {
             if(!message.Message<GameplayMessage>().HasValue) return;
-            var data = message.Message<GameplayMessage>().Value;
+            var data = message.Message<GameplayMessage>().GetValueOrDefault();
             testObject.stringField = data.Message;
         }
 
