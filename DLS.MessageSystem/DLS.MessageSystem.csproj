@@ -6,8 +6,13 @@
     <LangVersion>9</LangVersion>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageId>DLS.MessageSystem</PackageId>
-    <Version>1.0.0</Version>
-    <PackageReleaseNotes>Initial release of the DLS Messaging System. Support for Unity and .Net Standard 2.1</PackageReleaseNotes>
+    <Version>2.0.0</Version>
+    <PackageReleaseNotes>
+      Added Interface IMessageChannel to support custom message channels.,
+      Cleaned up documentation and added more examples.,
+      Organized code folder and file structure for better readability.,
+      Added Backwards compatability to avoid problems with existing code bases for users upgrading to the new version.
+    </PackageReleaseNotes>
     <Authors>Monydragon</Authors>
     <Company>Dragon Lens Studios</Company>
     <Description>A robust messaging system for applications and games.</Description>
