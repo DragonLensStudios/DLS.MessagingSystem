@@ -1,4 +1,4 @@
-# Message  System  User  Guide v2.0.0
+# Message  System  User  Guide v2.0.1
 
 ## Introduction
 
@@ -108,7 +108,7 @@ public interface IMessageChannel
 A `CustomChannel` is used to define a custom message channel that may be specific to a particular use case or part of an application:
 
 ```csharp
-public class CustomChannel : IMessageCHannel
+public class CustomChannel : IMessageChannel
 {
     public string Name { get; private set; }
 
@@ -124,7 +124,7 @@ public class CustomChannel : IMessageCHannel
 The `DefaultMessageChannel` simplifies the usage of predefined channels from the `MessageChannels` enum, encapsulating them into an easy-to-use object:
 
 ```csharp
-public class DefaultMessageCommand : IMessageCHannel
+public class DefaultMessageChannel : IMessageChannel
 {
     public MessageChannels Channels { get; private set; }
 
