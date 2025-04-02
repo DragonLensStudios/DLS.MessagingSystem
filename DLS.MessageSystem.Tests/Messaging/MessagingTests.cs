@@ -37,8 +37,10 @@ namespace DLS.MessageSystem.Tests.Messaging
             MessageSystem.MessageManager.RegisterForChannel<SystemMessage>(systemChannel, SystemMessageHandler);;
             MessageSystem.MessageManager.RegisterForChannel<GameplayMessage>(systemChannel, GamePlayMessageHandler2);
             MessageSystem.MessageManager.RegisterForChannel<GameplayMessage>(tacoCustomChannel, TacoCustomChannel);
+            MessageSystem.MessageManager.RegisterForChannel<GameplayMessage>("MyStringChannel", StringCustomChannel);
             
             MessageSystem.MessageManager.RegisterForChannel<SystemMessage>(AwesomeCustomChannelHandler, 0, awesomeCustomChannel, gamePlayChannel);
+            MessageSystem.MessageManager.RegisterForChannel<StringMessage>(StringMessageHandler, 0, "Gameplay", "System", "UI");
             MessageSystem.MessageManager.RegisterForChannel<StringMessage>(StringMessageHandler, 0, gamePlayChannel, systemChannel, uiChannel);
             MessageSystem.MessageManager.RegisterForChannel<SystemMessage>(AnotherSystemHandler, 0, systemChannel, uiChannel);
             MessageSystem.MessageManager.RegisterForChannel<SystemMessage>(AnotherSystemHandler, 0, MessageChannels.UI, MessageChannels.Achievement);
@@ -58,14 +60,23 @@ namespace DLS.MessageSystem.Tests.Messaging
             MessageSystem.MessageManager.UnregisterForChannel<SystemMessage>(systemChannel, SystemMessageHandler);;
             MessageSystem.MessageManager.UnregisterForChannel<GameplayMessage>(systemChannel, GamePlayMessageHandler2);
             MessageSystem.MessageManager.UnregisterForChannel<GameplayMessage>(tacoCustomChannel, TacoCustomChannel);
-            
+            MessageSystem.MessageManager.UnregisterForChannel<GameplayMessage>("MyStringChannel", StringCustomChannel);
             MessageSystem.MessageManager.UnregisterForChannel<SystemMessage>(AwesomeCustomChannelHandler, awesomeCustomChannel, gamePlayChannel);
+            MessageSystem.MessageManager.UnregisterForChannel<StringMessage>(StringMessageHandler, "Gameplay", "System", "UI");
             MessageSystem.MessageManager.UnregisterForChannel<StringMessage>(StringMessageHandler, gamePlayChannel, systemChannel, uiChannel);
             MessageSystem.MessageManager.UnregisterForChannel<SystemMessage>(AnotherSystemHandler, systemChannel, uiChannel);
             MessageSystem.MessageManager.UnregisterForChannel<SystemMessage>(AnotherSystemHandler, MessageChannels.UI, MessageChannels.Achievement);
+            
         }
 
         private void TacoCustomChannel(IMessageEnvelope message)
+        {
+            if (!message.Message<GameplayMessage>().HasValue) return;
+            var data = message.Message<GameplayMessage>().GetValueOrDefault();
+            testObject.StringProp = data.Message;
+        }
+        
+        private void StringCustomChannel(IMessageEnvelope message)
         {
             if (!message.Message<GameplayMessage>().HasValue) return;
             var data = message.Message<GameplayMessage>().GetValueOrDefault();
@@ -128,6 +139,9 @@ namespace DLS.MessageSystem.Tests.Messaging
             var text2 = "Test My Taco";
             MessageSystem.MessageManager.SendImmediate(MessageChannels.Gameplay, new GameplayMessage(text2));
             Assert.AreEqual(testObject.stringField, text2);
+            var text3 = "Test My Taco 2";
+            MessageSystem.MessageManager.SendImmediate("Gameplay", new GameplayMessage(text3));
+            Assert.AreEqual(testObject.stringField, text3);
         }
         
         [Test]
@@ -141,6 +155,9 @@ namespace DLS.MessageSystem.Tests.Messaging
             var text2 = "Super Duper Taco";
             MessageSystem.MessageManager.SendImmediate(new StringMessage(text2), MessageChannels.Gameplay, MessageChannels.System, MessageChannels.UI);
             Assert.AreEqual(testObject.StringProp, text2);
+            var text3 = "Super Duper Taco 2";
+            MessageSystem.MessageManager.SendImmediate(new StringMessage(text3), "Gameplay", "System", "UI");
+            Assert.AreEqual(testObject.StringProp, text3);
         }
 
         [Test]
@@ -170,6 +187,8 @@ namespace DLS.MessageSystem.Tests.Messaging
             Assert.AreEqual("Ninjas", testObject.StringProp);
             MessageSystem.MessageManager.SendImmediate(MessageChannels.System, new GameplayMessage("Pirates"));
             Assert.AreEqual("Pirates", testObject.StringProp);
+            MessageSystem.MessageManager.SendImmediate("System", new GameplayMessage("Samurai"));
+            Assert.AreEqual("Samurai", testObject.StringProp);
         }
 
         [Test]
@@ -322,9 +341,11 @@ namespace DLS.MessageSystem.Tests.Messaging
 
             MessageSystem.MessageManager.UnregisterForChannel<StringMessage>(systemChannel, handler);
             MessageSystem.MessageManager.SendImmediate(systemChannel, new StringMessage("Second Message"));
+            MessageSystem.MessageManager.RegisterForChannel<StringMessage>("System", handler);
+            MessageSystem.MessageManager.SendImmediate(systemChannel, new StringMessage("Third Message"));
 
             // Assert
-            Assert.AreNotEqual("Second Message", testObject.StringProp);
+            Assert.AreNotEqual("Third Message", testObject.StringProp);
         }
 
         [Test]
@@ -384,6 +405,10 @@ namespace DLS.MessageSystem.Tests.Messaging
             var text2 = "Test My Async";
             await MessageSystem.MessageManager.SendImmediateAsync(MessageChannels.Gameplay, new GameplayMessage(text2));
             Assert.AreEqual(testObject.stringField, text2);
+            
+            var text3 = "Test My Async 2";
+            await MessageSystem.MessageManager.SendImmediateAsync("Gameplay", new GameplayMessage(text3));
+            Assert.AreEqual(testObject.stringField, text3);
         }
         
         [Test]
@@ -481,6 +506,11 @@ namespace DLS.MessageSystem.Tests.Messaging
             await MessageSystem.MessageManager.SendAsync(MessageChannels.Gameplay, new GameplayMessage(text2));
             await MessageSystem.MessageManager.ProcessMessagesAsync();
             Assert.AreEqual(testObject.stringField, text2);
+            
+            var text3 = "Test My Message 2 Async";
+            await MessageSystem.MessageManager.SendAsync("Gameplay", new GameplayMessage(text3));
+            await MessageSystem.MessageManager.ProcessMessagesAsync();
+            Assert.AreEqual(testObject.stringField, text3);
         }
 
         [Test]
