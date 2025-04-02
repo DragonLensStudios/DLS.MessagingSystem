@@ -1,100 +1,16 @@
-# Message  System  User  Guide v2.1.0
+# Dragon Lens Message System User Guide v2.2.0
 
-## Introduction
+## 🌐 Introduction
 
-This guide provides a comprehensive overview of the Message System, detailing its features and usage. The system supports various messaging channels, allowing for robust communication within applications and games.
+Welcome to the **Dragon Lens Message System v2.2.0** user guide! This version introduces full **string-based channel support**, which allows developers to send, register, and broadcast messages using simple string identifiers in addition to the existing enum-based and custom channels.
 
-## MessageChannels Enum
+This guide provides a detailed reference for every aspect of the message system, including real-world use cases, handler design, asynchronous processing, serialization, and best practices.
 
-The `MessageChannels` enum defines various channels for message communication.
+------
 
-```csharp
-public enum MessageChannels
-{
-    System,
-    Logging,
-    Debug,
-    Error,
-    Warning,
-    Info,
-    Gameplay,
-    Level,
-    Quest,
-    Achievement,
-    Combat,
-    AI,
-    Physics,
-    Animation,
-    Player,
-    PlayerStats,
-    PlayerInventory,
-    PlayerSkills,
-    PlayerActions,
-    PlayerHealth,
-    PlayerMovement,
-    Enemy,
-    EnemyStats,
-    EnemyAI,
-    EnemyHealth,
-    EnemyActions,
-    Items,
-    ItemPickup,
-    ItemDrop,
-    ItemUse,
-    ItemCrafting,
-    InventoryManagement,
-    UI,
-    UINotifications,
-    UIMenus,
-    UIButtons,
-    UIDialogs,
-    UILoadingScreen,
-    UIPopup,
-    Network,
-    NetworkConnect,
-    NetworkDisconnect,
-    NetworkError,
-    NetworkData,
-    Audio,
-    Music,
-    SoundEffects,
-    Voice,
-    Input,
-    KeyPress,
-    MouseClick,
-    Touch,
-    Time,
-    DayNightCycle,
-    Timer,
-    Weather,
-    Environment,
-    NPC,
-    Scripting,
-    SaveLoad,
-    Cutscene,
-    Tutorial,
-    Economy,
-    Trade,
-    Dialogue,
-    Camera,
-    UI_HUD,
-    UI_Inventory,
-    UI_QuestLog,
-    UI_SkillTree,
-    Social,
-    Chat,
-    Mail,
-    FriendRequest,
-    Clan,
-    Group
-}
-```
-
-## Core Components
+## 🤖 Core Concepts
 
 ### IMessageChannel Interface
-
-The `IMessageChannel` interface is the foundation for creating message channels. It allows for the definition of custom channels beyond the standard ones provided by the `MessageChannels` enum:
 
 ```csharp
 public interface IMessageChannel
@@ -103,244 +19,226 @@ public interface IMessageChannel
 }
 ```
 
-### CustomChannel
-
-A `CustomChannel` is used to define a custom message channel that may be specific to a particular use case or part of an application:
-
-```csharp
-public class CustomChannel : IMessageChannel
-{
-    public string Name { get; private set; }
-
-    public CustomChannel(string name)
-    {
-        Name = name;
-    }
-}
-```
+Defines a contract for all channels. This makes it easy to abstract between enum, custom, or string-based channels.
 
 ### DefaultMessageChannel
-
-The `DefaultMessageChannel` simplifies the usage of predefined channels from the `MessageChannels` enum, encapsulating them into an easy-to-use object:
 
 ```csharp
 public class DefaultMessageChannel : IMessageChannel
 {
     public MessageChannels Channels { get; private set; }
-
-    public DefaultMessageChannel(MessageChannels channels)
-    {
-        Channels = channels;
-    }
-
     public string Name => Channels.ToString();
 }
 ```
 
-### Message Envelope
+Encapsulates `MessageChannels` enum values. Best used for predefined, strongly typed channels.
 
-The `IMessageEnvelope` interface and its implementation `MessageEnvelope` are used to wrap messages.
+### CustomChannel
 
 ```csharp
-public interface IMessageEnvelope
+public class CustomChannel : IMessageChannel
 {
-    Type MessageType { get; }
-}
-
-public interface IMessageEnvelope<out T> : IMessageEnvelope
-{
-    T? Message { get; }
-}
-
-public class MessageEnvelope<T> : IMessageEnvelope, IMessageEnvelope<T?>
-{
-    public T? Message { get; private set; }
-    public Type MessageType { get; private set; } = typeof(T);
-
-    public MessageEnvelope(T? message)
-    {
-        Message = message;
-    }
+    public string Name { get; private set; }
+    public CustomChannel(string name) => Name = name;
 }
 ```
 
-### Message Manager
+Allows flexible creation of channels at runtime using plain strings.
 
-The `MessageManager` class handles the registration, sending, and processing of messages.
+------
 
-#### Registering Handlers
+## 🚀 v2.2.0 Feature Spotlight: String Channel Support
 
-Register a handler for a specific channel with the MessageChannels enum.
-
-```csharp
-MessageSystem.MessageManager.RegisterForChannel<GameplayMessage>(MessageChannels.Gameplay, GameplayMessageHandler);
-```
-
-Register a handler for multiple channels with the MessageChannels enum.
+You can now use raw strings instead of enums or custom class instances:
 
 ```csharp
-MessageSystem.MessageManager.RegisterForChannel<StringMessage>(StringMessageHandler, 0, MessageChannels.Gameplay, MessageChannels.System, MessageChannels.UI);
+MessageSystem.MessageManager.RegisterForChannel<MyMessage>("GameplayItems", MyHandler);
+MessageSystem.MessageManager.SendImmediate("GameplayItems", new MyMessage());
 ```
 
-Register a handler using custom channels.
+All registration, sending, and broadcasting methods have overloads for string channels.
+
+------
+
+## 📄 Registering Handlers
+
+### Using String Channels
 
 ```csharp
-protected const string AwesomeTime = "AwesomeTime";
-protected const string TacoString = "Taco";
-protected IMessageChannel awesomeCustomChannel = new CustomChannel(AwesomeTime);
-protected IMessageChannel tacoCustomChannel = new CustomChannel(TacoString);
-
-MessageSystem.MessageManager.RegisterForChannel<GameplayMessage>(tacoCustomChannel, TacoCustomChannel);
-MessageSystem.MessageManager.RegisterForChannel<SystemMessage>(AwesomeCustomChannelHandler, 0, awesomeCustomChannel, gamePlayChannel);
+MessageSystem.MessageManager.RegisterForChannel<MyMessage>("CustomGameplay", MyMessageHandler);
 ```
 
-#### Unregistering Handlers
-
-Unregister a handler for a specific channel with the MessageChannels enum.
+### Multiple String Channels
 
 ```csharp
-MessageSystem.MessageManager.UnregisterForChannel<GameplayMessage>(MessageChannels.Gameplay, GameplayMessageHandler);
+MessageSystem.MessageManager.RegisterForChannel<MyMessage>(MyMessageHandler, 0, "One", "Two", "Three");
 ```
 
-Unregister a handler for multiple channels with the MessageChannels enum
+### Using Enums (Strong Typing)
 
 ```csharp
-MessageSystem.MessageManager.UnregisterForChannel<GameplayMessage>(StringMessageHandler, MessageChannels.System, MessageChannels.Gameplay, MessageChannels.UI);
+MessageSystem.MessageManager.RegisterForChannel<ItemMessage>(MessageChannels.Items, ItemMessageHandler);
 ```
 
-Unregister a handler using custom channels.
+### CustomChannel (Wrapped String)
 
 ```csharp
-MessageSystem.MessageManager.UnregisterForChannel<SystemMessage>(AwesomeCustomChannelHandler, awesomeCustomChannel, gamePlayChannel);
+var myChannel = new CustomChannel("Crafting");
+MessageSystem.MessageManager.RegisterForChannel<CraftMessage>(myChannel, CraftMessageHandler);
 ```
 
-#### Sending Messages
+------
 
-Send a message immediately.
+## 📢 Sending Messages
+
+### Send Immediately
 
 ```csharp
-MessageSystem.MessageManager.SendImmediate(MessageChannels.Gameplay, new GameplayMessage("Hello"));
+MessageSystem.MessageManager.SendImmediate("ItemsChannel", new ItemMessage(...));
 ```
 
-Send a message to be processed later.
+### Send to Enum Channel
 
 ```csharp
-MessageSystem.MessageManager.Send(MessageChannels.Gameplay, new GameplayMessage("Queued Message"));
+MessageSystem.MessageManager.SendImmediate(MessageChannels.ItemPickup, new ItemMessage(...));
 ```
 
-Send a message immediately to multiple channels.
+### Send Queued
 
 ```csharp
-MessageSystem.MessageManager.SendImmediate(new StringMessage("Hello"), MessageChannels.Gameplay, MessageChannels.System, MessageChannels.UI);
+MessageSystem.MessageManager.Send("InventoryQueue", new ItemMessage(...));
 ```
 
-Broadcast a message to all channels immediately.
+### Send to Multiple Channels
 
 ```csharp
-MessageSystem.MessageManager.BroadcastImmediate(new GameplayMessage("Broadcast Message"));
+MessageSystem.MessageManager.SendImmediate(new ItemMessage(...), "ItemsChannel", "LogChannel");
 ```
 
-Broadcast a message to all channels to be processed later.
+------
 
-```csharp
-MessageSystem.MessageManager.Broadcast(new GameplayMessage("Broadcast Message"));
-```
+## ⏳ Processing Messages
 
-#### Processing Messages
-
-Process queued messages.
+### Manual
 
 ```csharp
 MessageSystem.MessageManager.ProcessMessages();
 ```
 
-Process queued messages asynchronously.
+### Asynchronous
 
 ```csharp
 await MessageSystem.MessageManager.ProcessMessagesAsync();
 ```
 
-#### Sending Messages Asynchronously
+------
 
-Send a message immediately asynchronously.
+## ⏱️ Async Messaging
 
-```
-await MessageSystem.MessageManager.SendImmediateAsync(MessageChannels.Gameplay, new GameplayMessage("Hello Async"));
-```
-
-Send a message to be processed later asynchronously.
+### Send Immediately Async
 
 ```csharp
-await MessageSystem.MessageManager.SendAsync(MessageChannels.Gameplay, new GameplayMessage("Queued Message Async"));
+await MessageSystem.MessageManager.SendImmediateAsync("AsyncItem", new ItemMessage(...));
 ```
 
-Broadcast a message to all channels immediately asynchronously.
+### Send Queued Async
 
 ```csharp
-await MessageSystem.MessageManager.BroadcastImmediateAsync(new GameplayMessage("Broadcast Message Immediate Async"));
+await MessageSystem.MessageManager.SendAsync("AsyncDelayed", new ItemMessage(...));
 ```
 
-Broadcast a message to all channels to be processed later asynchronously.
+------
+
+## 🔊 Broadcasting
+
+### Broadcast Immediate
 
 ```csharp
-await MessageSystem.MessageManager.BroadcastAsync(new GameplayMessage("Broadcast Message Async"));
+MessageSystem.MessageManager.BroadcastImmediate(new ItemMessage(...));
 ```
 
-### Serialization
-
-#### Serialize Message to JSON
+### Broadcast Queued
 
 ```csharp
-var serializedMessage = MessageSystem.MessageManager.SerializeMessageToJson(new GameplayMessage("Serialize Test"));
+MessageSystem.MessageManager.Broadcast(new ItemMessage(...));
 ```
 
-#### Deserialize Message from JSON
+### Broadcast Async
 
 ```csharp
-var deserializedMessage = MessageSystem.MessageManager.DeserializeMessageFromJson<GameplayMessage>(serializedMessage);
+await MessageSystem.MessageManager.BroadcastImmediateAsync(new ItemMessage(...));
+await MessageSystem.MessageManager.BroadcastAsync(new ItemMessage(...));
 ```
 
-## Examples
+------
 
-### Sending a Complex Message
-
-Here's an example of sending a complex message with multiple properties.
+## 🔧 Real World Example: `ItemMessage`
 
 ```csharp
 public struct ItemMessage
 {
     public IItem Item { get; }
     public IActor? Source { get; }
-    public IActor? Target { get; }
+    public List<IActor?>? Targets { get; }
 
-    public ItemMessage(IItem item, IActor? source, IActor? target)
+    public ItemMessage(IItem item, IActor? source, List<IActor?>? targets)
     {
         Item = item;
         Source = source;
-        Target = target;
+        Targets = targets;
     }
 }
-
-// Sending an ItemMessage
-var item = new Item();
-var sourceActor = new Actor();
-var targetActor = new Actor();
-
-MessageSystem.MessageManager.SendImmediate(MessageChannels.Items, new ItemMessage(item, sourceActor, targetActor));
 ```
 
-### Message Handlers
-
-Example message handlers.
+### Registering a Handler
 
 ```csharp
-private void TacoCustomChannel(IMessageEnvelope message)
-{
-    if (!message.Message<GameplayMessage>().HasValue) return;
-    var data = message.Message<GameplayMessage>().GetValueOrDefault();
-    testObject.StringProp = data.Message;
-}
+MessageSystem.MessageManager.RegisterForChannel<ItemMessage>(MessageChannels.Items, HandleItemMessage);
+```
 
+### Handling the Message
+
+```csharp
+private void HandleItemMessage(IMessageEnvelope envelope)
+{
+    if (!envelope.Message<ItemMessage>().HasValue) return;
+    var data = envelope.Message<ItemMessage>().GetValueOrDefault();
+    
+    // Example use
+    Console.WriteLine($"Item used: {data.Item.Name} by {data.Source?.Name}");
+    data.Targets?.ForEach(target => Console.WriteLine($"Affected Target: {target?.Name}"));
+}
+```
+
+------
+
+## 🔢 Serialization
+
+```csharp
+var serialized = MessageSystem.MessageManager.SerializeMessageToJson(new ItemMessage(...));
+var deserialized = MessageSystem.MessageManager.DeserializeMessageFromJson<ItemMessage>(serialized);
+```
+
+------
+
+## 🌟 Summary Table
+
+| Feature                  | Description                                      |
+| ------------------------ | ------------------------------------------------ |
+| String Channels          | Dynamic and easy-to-use identifiers              |
+| Enum Channels            | Strong typing and organization                   |
+| CustomChannel            | Reusable named wrappers for strings              |
+| Sync & Async Messaging   | Supports queued/immediate with awaitable methods |
+| Multiple Channel Support | Send or register across several channels at once |
+| JSON Serialization       | Useful for persistence, debugging                |
+
+------
+
+## 🔮 Best Practice: Message Handling Pattern
+
+When creating a handler, always validate and extract safely:
+
+```csharp
 private void AwesomeCustomChannelHandler(IMessageEnvelope message)
 {
     if (!message.Message<SystemMessage>().HasValue) return;
@@ -348,45 +246,20 @@ private void AwesomeCustomChannelHandler(IMessageEnvelope message)
     testObject.intField = data.TestObject.intField;
     testObject.stringField = data.TestObject.stringField;
 }
-
-private void StringMessageHandler(IMessageEnvelope message)
-{
-    if(!message.Message<StringMessage>().HasValue) return;
-    var data = message.Message<StringMessage>().GetValueOrDefault();
-    testObject.StringProp = data.Message;
-}
-
-private void GamePlayMessageHandler2(IMessageEnvelope message)
-{
-    if(!message.Message<GameplayMessage>().HasValue) return;
-    var data = message.Message<GameplayMessage>().GetValueOrDefault();
-    testObject.StringProp = data.Message;
-}
-
-private void SystemMessageHandler(IMessageEnvelope message)
-{
-    if(!message.Message<SystemMessage>().HasValue) return;
-    var data = message.Message<SystemMessage>().GetValueOrDefault();
-    testObject.intField = data.TestObject.intField;
-    testObject.stringField = data.TestObject.stringField;
-}
-
-private void AnotherSystemHandler(IMessageEnvelope message)
-{
-    if (!message.Message<SystemMessage>().HasValue) return;
-    var data = message.Message<SystemMessage>().GetValueOrDefault();
-    testObject.intField = data.TestObject.intField;
-    testObject.stringField = data.TestObject.stringField;
-}
-
-private void GameplayMessageHandler(IMessageEnvelope message)
-{
-    if(!message.Message<GameplayMessage>().HasValue) return;
-    var data = message.Message<GameplayMessage>().GetValueOrDefault();
-    testObject.stringField = data.Message;
-}
 ```
 
-## Conclusion
+This ensures type safety and guards against null values. Always pattern match using `HasValue` and then `.GetValueOrDefault()`.
 
-This guide provides an overview of the Message System, detailing its core components, usage, and examples. For more information and advanced usage, refer to the source code and tests.
+------
+
+## 🎓 Learn More
+
+- Explore the full `MessageManager` API
+- Read tests and examples in the repo
+- Join the community and contribute enhancements!
+
+------
+
+**Thanks for using Dragon Lens Message System v2.2.0!** ✨
+
+Crafted with ❤️ to keep your systems modular, clean, and powerful.

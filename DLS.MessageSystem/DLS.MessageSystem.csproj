@@ -6,7 +6,7 @@
     <LangVersion>9</LangVersion>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageId>DLS.MessageSystem</PackageId>
-    <Version>2.1.0</Version>
+    <Version>2.2.0</Version>
     <PackageReleaseNotes>
       Updated Sending messages to work the Enum again, Cleanup, refactor, and added more tests.
       Removed Binary formatter for serialize and deserialize,
